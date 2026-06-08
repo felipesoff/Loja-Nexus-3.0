@@ -183,20 +183,106 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             supabaseService.getCoupons().catch(e => { console.warn('Supabase coupons error:', e); return null; })
           ]);
 
+          // 1. Sync Products
           if (supabaseProducts && supabaseProducts.length > 0) {
             setProducts(supabaseProducts.map(p => ({ ...p, active: p.active ?? true, stock: p.stock ?? 0 })));
+          } else if (supabaseProducts && supabaseProducts.length === 0) {
+            try {
+              const saved = localStorage.getItem('nexus_products');
+              if (saved) {
+                const localItems = JSON.parse(saved) as Product[];
+                if (localItems && localItems.length > 0) {
+                  console.log('[Sync] Migrating products to Supabase:', localItems);
+                  await Promise.all(localItems.map(p => supabaseService.upsertProduct(p)));
+                  const refreshed = await supabaseService.getProducts();
+                  setProducts(refreshed.map(p => ({ ...p, active: p.active ?? true, stock: p.stock ?? 0 })));
+                }
+              }
+            } catch (err) {
+              console.error('Failed to sync products to Supabase:', err);
+            }
           }
+
+          // 2. Sync Banners
           if (supabaseBanners && supabaseBanners.length > 0) {
             setBanners(supabaseBanners.map(b => ({ ...b, active: b.active ?? true })));
+          } else if (supabaseBanners && supabaseBanners.length === 0) {
+            try {
+              const saved = localStorage.getItem('nexus_banners');
+              if (saved) {
+                const localItems = JSON.parse(saved) as Banner[];
+                if (localItems && localItems.length > 0) {
+                  console.log('[Sync] Migrating banners to Supabase:', localItems);
+                  await Promise.all(localItems.map(b => supabaseService.upsertBanner(b)));
+                  const refreshed = await supabaseService.getBanners();
+                  setBanners(refreshed.map(b => ({ ...b, active: b.active ?? true })));
+                }
+              }
+            } catch (err) {
+              console.error('Failed to sync banners to Supabase:', err);
+            }
           }
+
+          // 3. Sync Collections
           if (supabaseCollections && supabaseCollections.length > 0) {
             setCollections(supabaseCollections.map(c => ({ ...c, active: c.active ?? true })));
+          } else if (supabaseCollections && supabaseCollections.length === 0) {
+            try {
+              const saved = localStorage.getItem('nexus_collections');
+              if (saved) {
+                const localItems = JSON.parse(saved) as Collection[];
+                if (localItems && localItems.length > 0) {
+                  console.log('[Sync] Migrating collections to Supabase:', localItems);
+                  await Promise.all(localItems.map(c => supabaseService.upsertCollection(c)));
+                  const refreshed = await supabaseService.getCollections();
+                  setCollections(refreshed.map(c => ({ ...c, active: c.active ?? true })));
+                }
+              }
+            } catch (err) {
+              console.error('Failed to sync collections to Supabase:', err);
+            }
           }
+
+          // 4. Sync Config
           if (supabaseConfig) {
             setPaymentConfig(supabaseConfig);
+          } else {
+            try {
+              const saved = localStorage.getItem('nexus_paymentConfig');
+              if (saved) {
+                const localConfig = JSON.parse(saved) as PaymentConfig;
+                if (localConfig && (localConfig.pixKey || localConfig.contactPhone || localConfig.contactEmail)) {
+                  console.log('[Sync] Migrating payment config to Supabase:', localConfig);
+                  await supabaseService.updateConfig(localConfig);
+                  const refreshed = await supabaseService.getConfig();
+                  if (refreshed) {
+                    setPaymentConfig(refreshed);
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('Failed to sync config to Supabase:', err);
+            }
           }
+
+          // 5. Sync Coupons
           if (supabaseCoupons && supabaseCoupons.length > 0) {
             setCoupons(supabaseCoupons.map(c => ({ ...c, active: c.active ?? true, usageCount: c.usageCount ?? 0 })));
+          } else if (supabaseCoupons && supabaseCoupons.length === 0) {
+            try {
+              const saved = localStorage.getItem('nexus_coupons');
+              if (saved) {
+                const localItems = JSON.parse(saved) as Coupon[];
+                if (localItems && localItems.length > 0) {
+                  console.log('[Sync] Migrating coupons to Supabase:', localItems);
+                  await Promise.all(localItems.map(c => supabaseService.upsertCoupon(c)));
+                  const refreshed = await supabaseService.getCoupons();
+                  setCoupons(refreshed.map(c => ({ ...c, active: c.active ?? true, usageCount: c.usageCount ?? 0 })));
+                }
+              }
+            } catch (err) {
+              console.error('Failed to sync coupons to Supabase:', err);
+            }
           }
         } catch (error) {
           console.warn('Error loading from Supabase:', error);
