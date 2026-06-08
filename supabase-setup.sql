@@ -1,5 +1,5 @@
 -- 1. Profiles (Users)
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
     id TEXT PRIMARY KEY, -- Can be Firebase ID or Supabase UUID
     name TEXT,
     email TEXT,
@@ -11,7 +11,7 @@ CREATE TABLE public.profiles (
 );
 
 -- 2. Products
-CREATE TABLE public.products (
+CREATE TABLE IF NOT EXISTS public.products (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     sku TEXT,
@@ -34,7 +34,7 @@ CREATE TABLE public.products (
 );
 
 -- 3. Banners
-CREATE TABLE public.banners (
+CREATE TABLE IF NOT EXISTS public.banners (
     id TEXT PRIMARY KEY,
     title TEXT,
     subtitle TEXT,
@@ -45,7 +45,7 @@ CREATE TABLE public.banners (
 );
 
 -- 4. Collections
-CREATE TABLE public.collections (
+CREATE TABLE IF NOT EXISTS public.collections (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
@@ -59,14 +59,14 @@ CREATE TABLE public.collections (
 );
 
 -- 5. Config
-CREATE TABLE public.config (
+CREATE TABLE IF NOT EXISTS public.config (
     id TEXT PRIMARY KEY,
     value JSONB NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 6. Coupons
-CREATE TABLE public.coupons (
+CREATE TABLE IF NOT EXISTS public.coupons (
     id TEXT PRIMARY KEY,
     code TEXT UNIQUE NOT NULL,
     type TEXT NOT NULL, -- percentage, fixed
@@ -89,7 +89,7 @@ CREATE TABLE public.coupons (
 );
 
 -- 7. Orders
-CREATE TABLE public.orders (
+CREATE TABLE IF NOT EXISTS public.orders (
     id TEXT PRIMARY KEY,
     userId TEXT,
     items JSONB NOT NULL,
@@ -109,7 +109,7 @@ CREATE TABLE public.orders (
 );
 
 -- 8. Reviews
-CREATE TABLE public.reviews (
+CREATE TABLE IF NOT EXISTS public.reviews (
     id TEXT PRIMARY KEY,
     productId TEXT,
     productName TEXT,
@@ -124,7 +124,7 @@ CREATE TABLE public.reviews (
 );
 
 -- 9. Coupon Usages
-CREATE TABLE public.coupon_usages (
+CREATE TABLE IF NOT EXISTS public.coupon_usages (
     id TEXT PRIMARY KEY,
     couponId TEXT,
     couponCode TEXT,
@@ -149,6 +149,15 @@ ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coupon_usages ENABLE ROW LEVEL SECURITY;
+
+-- Drop Policies if they already exist to prevent duplicate errors
+DROP POLICY IF EXISTS "Allow public read" ON public.products;
+DROP POLICY IF EXISTS "Allow public read" ON public.banners;
+DROP POLICY IF EXISTS "Allow public read" ON public.collections;
+DROP POLICY IF EXISTS "Allow public read" ON public.config;
+DROP POLICY IF EXISTS "Allow public read" ON public.reviews;
+DROP POLICY IF EXISTS "Users can see their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can see their own orders" ON public.orders;
 
 -- Basic Policies (Allow all for development, you can harden later)
 CREATE POLICY "Allow public read" ON public.products FOR SELECT USING (true);
