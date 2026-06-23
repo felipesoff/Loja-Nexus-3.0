@@ -193,7 +193,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const localItems = JSON.parse(saved) as Product[];
                 if (localItems && localItems.length > 0) {
                   console.log('[Sync] Migrating products to Supabase:', localItems);
-                  await Promise.all(localItems.map(p => supabaseService.upsertProduct(p)));
+                  let successCount = 0;
+                  for (const p of localItems) {
+                    try {
+                      const cleanedProduct = {
+                        id: p.id,
+                        name: p.name,
+                        sku: p.sku || null,
+                        team: p.team || '',
+                        league: p.league || '',
+                        price: p.price,
+                        promotionalPrice: p.promotionalPrice !== undefined ? p.promotionalPrice : null,
+                        costPrice: p.costPrice !== undefined ? p.costPrice : null,
+                        originalPrice: p.originalPrice !== undefined ? p.originalPrice : null,
+                        image: p.image || '',
+                        images: p.images || [],
+                        description: p.description || '',
+                        category: p.category || '',
+                        sizes: p.sizes || [],
+                        sizeStock: p.sizeStock || {},
+                        stock: p.stock || 0,
+                        active: p.active !== undefined ? p.active : true,
+                        isNewArrival: p.isNewArrival !== undefined ? p.isNewArrival : false
+                      };
+                      await supabaseService.upsertProduct(cleanedProduct);
+                      successCount++;
+                    } catch (itemErr) {
+                      console.error(`[Sync] Failed to upsert product ${p.name || p.id}:`, itemErr);
+                    }
+                  }
+                  console.log(`[Sync] Successfully migrated ${successCount}/${localItems.length} products.`);
                   const refreshed = await supabaseService.getProducts();
                   setProducts(refreshed.map(p => ({ ...p, active: p.active ?? true, stock: p.stock ?? 0 })));
                 }
@@ -213,7 +242,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const localItems = JSON.parse(saved) as Banner[];
                 if (localItems && localItems.length > 0) {
                   console.log('[Sync] Migrating banners to Supabase:', localItems);
-                  await Promise.all(localItems.map(b => supabaseService.upsertBanner(b)));
+                  for (const b of localItems) {
+                    try {
+                      const cleanedBanner = {
+                        id: b.id,
+                        title: b.title || '',
+                        subtitle: b.subtitle || '',
+                        image: b.image || '',
+                        buttonText: b.buttonText || '',
+                        active: b.active !== undefined ? b.active : true
+                      };
+                      await supabaseService.upsertBanner(cleanedBanner);
+                    } catch (itemErr) {
+                      console.error(`[Sync] Failed to upsert banner ${b.title || b.id}:`, itemErr);
+                    }
+                  }
                   const refreshed = await supabaseService.getBanners();
                   setBanners(refreshed.map(b => ({ ...b, active: b.active ?? true })));
                 }
@@ -233,7 +276,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const localItems = JSON.parse(saved) as Collection[];
                 if (localItems && localItems.length > 0) {
                   console.log('[Sync] Migrating collections to Supabase:', localItems);
-                  await Promise.all(localItems.map(c => supabaseService.upsertCollection(c)));
+                  for (const c of localItems) {
+                    try {
+                      const cleanedCollection = {
+                        id: c.id,
+                        name: c.name,
+                        description: c.description || '',
+                        image: c.image || '',
+                        active: c.active !== undefined ? c.active : true,
+                        parentId: c.parentId || null,
+                        featured: c.featured !== undefined ? c.featured : false,
+                        isGuide: c.isGuide !== undefined ? c.isGuide : false,
+                        order: c.order !== undefined ? c.order : 0
+                      };
+                      await supabaseService.upsertCollection(cleanedCollection);
+                    } catch (itemErr) {
+                      console.error(`[Sync] Failed to upsert collection ${c.name || c.id}:`, itemErr);
+                    }
+                  }
                   const refreshed = await supabaseService.getCollections();
                   setCollections(refreshed.map(c => ({ ...c, active: c.active ?? true })));
                 }
@@ -275,7 +335,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const localItems = JSON.parse(saved) as Coupon[];
                 if (localItems && localItems.length > 0) {
                   console.log('[Sync] Migrating coupons to Supabase:', localItems);
-                  await Promise.all(localItems.map(c => supabaseService.upsertCoupon(c)));
+                  for (const c of localItems) {
+                    try {
+                      const cleanedCoupon = {
+                        id: c.id,
+                        code: c.code,
+                        type: c.type,
+                        value: c.value,
+                        minOrderValue: c.minOrderValue !== undefined ? c.minOrderValue : null,
+                        maxOrderValue: c.maxOrderValue !== undefined ? c.maxOrderValue : null,
+                        minQuantity: c.minQuantity !== undefined ? c.minQuantity : null,
+                        maxQuantity: c.maxQuantity !== undefined ? c.maxQuantity : null,
+                        active: c.active !== undefined ? c.active : true,
+                        usageCount: c.usageCount || 0,
+                        maxUsage: c.maxUsage !== undefined ? c.maxUsage : null,
+                        expiryDate: c.expiryDate || null,
+                        isReferral: c.isReferral !== undefined ? c.isReferral : false,
+                        assignedUserId: c.assignedUserId || null,
+                        commissionPercentage: c.commissionPercentage !== undefined ? c.commissionPercentage : null
+                      };
+                      await supabaseService.upsertCoupon(cleanedCoupon);
+                    } catch (itemErr) {
+                      console.error(`[Sync] Failed to upsert coupon ${c.code || c.id}:`, itemErr);
+                    }
+                  }
                   const refreshed = await supabaseService.getCoupons();
                   setCoupons(refreshed.map(c => ({ ...c, active: c.active ?? true, usageCount: c.usageCount ?? 0 })));
                 }
@@ -330,39 +413,75 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 
   useEffect(() => {
-    localStorage.setItem('nexus_cart', JSON.stringify(cart));
+    try {
+      localStorage.setItem('nexus_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.warn('Failed to save cart to localStorage:', e);
+    }
   }, [cart]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_products', JSON.stringify(products));
+    try {
+      localStorage.setItem('nexus_products', JSON.stringify(products));
+    } catch (e) {
+      console.warn('Failed to save products to localStorage:', e);
+    }
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_orders', JSON.stringify(orders));
+    try {
+      localStorage.setItem('nexus_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.warn('Failed to save orders to localStorage:', e);
+    }
   }, [orders]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_banners', JSON.stringify(banners));
+    try {
+      localStorage.setItem('nexus_banners', JSON.stringify(banners));
+    } catch (e) {
+      console.warn('Failed to save banners to localStorage:', e);
+    }
   }, [banners]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_reviews', JSON.stringify(reviews));
+    try {
+      localStorage.setItem('nexus_reviews', JSON.stringify(reviews));
+    } catch (e) {
+      console.warn('Failed to save reviews to localStorage:', e);
+    }
   }, [reviews]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_collections', JSON.stringify(collections));
+    try {
+      localStorage.setItem('nexus_collections', JSON.stringify(collections));
+    } catch (e) {
+      console.warn('Failed to save collections to localStorage:', e);
+    }
   }, [collections]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_paymentConfig', JSON.stringify(paymentConfig));
+    try {
+      localStorage.setItem('nexus_paymentConfig', JSON.stringify(paymentConfig));
+    } catch (e) {
+      console.warn('Failed to save paymentConfig to localStorage:', e);
+    }
   }, [paymentConfig]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_coupons', JSON.stringify(coupons));
+    try {
+      localStorage.setItem('nexus_coupons', JSON.stringify(coupons));
+    } catch (e) {
+      console.warn('Failed to save coupons to localStorage:', e);
+    }
   }, [coupons]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_couponUsages', JSON.stringify(couponUsages));
+    try {
+      localStorage.setItem('nexus_couponUsages', JSON.stringify(couponUsages));
+    } catch (e) {
+      console.warn('Failed to save couponUsages to localStorage:', e);
+    }
   }, [couponUsages]);
 
   const addProduct = async (product: Product) => {
@@ -637,16 +756,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Import products batch
   const importProducts = async (newProducts: Product[]) => {
-    // Merge with existing products, avoiding duplicates by id
-    setProducts(prev => {
-      const existingIds = new Set(prev.map(p => p.id));
-      const filtered = newProducts.filter(p => !existingIds.has(p.id));
-      const merged = [...prev, ...filtered];
-      // Persist to localStorage
-      localStorage.setItem('nexus_products', JSON.stringify(merged));
-      return merged;
-    });
-    toast.success('Produtos importados com sucesso!');
+    let savedToCloud = false;
+    if (isSupabaseConfigured) {
+      try {
+        await Promise.all(newProducts.map(p => supabaseService.upsertProduct(p)));
+        const refreshed = await supabaseService.getProducts();
+        setProducts(refreshed.map(p => ({ ...p, active: p.active ?? true, stock: p.stock ?? 0 })));
+        savedToCloud = true;
+      } catch (error) {
+        console.warn('Supabase error importing products, falling back to local:', error);
+      }
+    }
+
+    if (!savedToCloud) {
+      setProducts(prev => {
+        const merged = [...prev];
+        newProducts.forEach(newP => {
+          const index = merged.findIndex(p => p.id === newP.id);
+          if (index !== -1) {
+            merged[index] = { ...merged[index], ...newP };
+          } else {
+            merged.push(newP);
+          }
+        });
+        // Persist to localStorage
+        try {
+          localStorage.setItem('nexus_products', JSON.stringify(merged));
+        } catch (e) {
+          console.warn('Failed to save products to localStorage:', e);
+        }
+        return merged;
+      });
+    }
+    toast.success(`${newProducts.length} produtos importados com sucesso!`);
   };
 
   const addCoupon = async (coupon: Coupon) => {

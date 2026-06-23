@@ -47,6 +47,7 @@ export interface Collection {
   parentId?: string;
   featured?: boolean;
   isGuide?: boolean;
+  order?: number;
 }
 
 export interface PaymentConfig {
